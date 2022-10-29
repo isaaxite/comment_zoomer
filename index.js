@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name         Comment Zoomer
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      1.0.0
 // @description  Add zoom button in github comment to provide full screen mode, allowing you to write comments more elegantly
 // @author       IsaacKam
-// @match        https://github.com/*/*/issues/*
+// @match        https://github.com/*
 // @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
 // @grant        none
+// @license MIT
 // ==/UserScript==
 
 (function() {
@@ -56,9 +57,11 @@
         max-height: none !important;
         height: calc(100vh - 200px) !important;
       }
+      .issue-editor__file-attachment {
+        margin-left: 15px;
+      }
       .issue-editor__file-attachment--preview {
         width: 50vw;
-        margin-left: 10px;
       }
       .issue-editor__file-attachment-write-content--preview {
         display: block !important;
@@ -136,6 +139,7 @@
     addClass({ node: document.body, classname: 'issue-editor__body--disable-scroll' });
     addClass({ node: nodes.caret, classname: 'issue-editor__caret' });
     addClass({ node: nodes.textarea, classname: 'issue-editor__textarea' });
+    addClass({ node: nodes.fileAttachment, classname: 'issue-editor__file-attachment' });
 
     appendPreviewEntery();
 
@@ -151,6 +155,7 @@
     removeClass({ node: document.body, classname: 'issue-editor__body--disable-scroll' });
     removeClass({ node: nodes.caret, classname: 'issue-editor__caret' });
     removeClass({ node: nodes.textarea, classname: 'issue-editor__textarea' });
+    removeClass({ node: nodes.fileAttachment, classname: 'issue-editor__file-attachment' });
     removePreviewEntry();
   }
 
