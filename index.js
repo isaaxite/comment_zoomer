@@ -18,9 +18,68 @@
     NORMAL: 'normal',
     FULL_SCREEN: 'full_screen'
   };
+  const emPreviewState = {
+    IDLE: '',
+    NORMAL: 'normal',
+    PREVIEW: 'preview'
+  };
   const store = {
     sup: null,
-    toggleStatus: emToggleState.IDLE
+    previewTimer: 0,
+    toggleStatus: emToggleState.IDLE,
+    previewStatus: emPreviewState.IDLE
+  };
+
+  const initStyle = () => {
+    const style = document.createElement('style');
+    const cssText = document.createTextNode(`
+      .issue-editor__body--disable-scroll {
+        overflow: hidden;
+      }
+      .issue-editor__entry-btn {
+        display: inline-block;
+        cursor: pointer;
+        user-select: none;
+        color: rgb(87, 96, 106);
+        margin-left: 2px;
+        vertical-align: top;
+      }
+      .issue-editor__caret {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 1001;
+      }
+      .issue-editor__textarea {
+        max-height: none !important;
+        height: calc(100vh - 200px) !important;
+      }
+      .issue-editor__file-attachment--preview {
+        width: 50vw;
+        margin-left: 10px;
+      }
+      .issue-editor__file-attachment-write-content--preview {
+        display: block !important;
+      }
+      .issue-editor__preview-content--preview {
+        width: 50vw;
+        margin-left: calc(50vw + 8px) !important;
+        display: block !important;
+        position: absolute;
+        top: 56px;
+        height: calc(100vh - 170px) !important;
+        overflow: auto;
+        border: 1px solid darkturquoise;
+        border-radius: 2px;
+      }
+      markdown-toolbar.issue-editor__markdown-toolbar {
+        display: block !important;
+      }
+    `);
+    style.appendChild(cssText);
+    document.head.appendChild(style);
   };
 
   const nodes = {};
@@ -39,41 +98,26 @@
     newCommentSup: intiGetter(
       () => nodes.discussionBucket.querySelector('.discussion-timeline-actions')),
     newCommentFormActions: intiGetter(
-      () => nodes.newCommentSup.querySelector('#partial-new-comment-form-actions'))
+      () => nodes.newCommentSup.querySelector('#partial-new-comment-form-actions')),
+    fileAttachment: intiGetter(
+      () => store.sup.querySelector('file-attachment')),
+    fileAttachmentWriteContent: intiGetter(
+        () => nodes.fileAttachment.querySelector('.write-content')),
+    previewContent: intiGetter(
+      () => store.sup.querySelector('.preview-content')),
+    previewEntery: intiGetter(
+      () => store.sup.querySelector('.issue-editor__preview-btn')),
+    updateEntery: intiGetter(
+      () => store.sup.querySelector('.issue-editor__update-btn')),
+    previewTab: intiGetter(
+      () => store.sup.querySelector('.preview-tab')),
+    writeTab: intiGetter(
+      () => store.sup.querySelector('.write-tab')),
   });
 
   window[namespace] = {};
   window[namespace].store = store;
   window[namespace].nodes = nodes;
-
-  function initStyle() {
-    const style = document.createElement('style');
-    const cssText = document.createTextNode(`
-      .issue-editor__body--disable-scroll {
-        overflow: hidden;
-      }
-      .issue-editor__entry-btn {
-        cursor: pointer;
-        user-select: none;
-        color: rgb(87, 96, 106);
-        margin-left: 2px;
-      }
-      .issue-editor__caret {
-        position: fixed;
-        top: 0;
-        right: 0;
-        bottom: 0;
-        left: 0;
-        z-index: 1001;
-      }
-      .issue-editor__textarea {
-        max-height: none !important;
-        height: calc(100vh - 200px) !important;
-      }
-    `);
-    style.appendChild(cssText);
-    document.head.appendChild(style);
-  }
 
   function addClass({ node, classname }) {
     const classSet = new Set(node.classList);
@@ -93,6 +137,12 @@
     addClass({ node: nodes.caret, classname: 'issue-editor__caret' });
     addClass({ node: nodes.textarea, classname: 'issue-editor__textarea' });
 
+    appendPreviewEntery();
+
+    Object.assign(nodes.markdownToolbar.style, {
+      display: 'block !important'
+    });
+
     nodes.textarea.focus();
   }
 
@@ -101,6 +151,63 @@
     removeClass({ node: document.body, classname: 'issue-editor__body--disable-scroll' });
     removeClass({ node: nodes.caret, classname: 'issue-editor__caret' });
     removeClass({ node: nodes.textarea, classname: 'issue-editor__textarea' });
+    removePreviewEntry();
+  }
+
+  function setPreviewMode() {
+    store.previewStatus = emPreviewState.PREVIEW;
+    addClass({
+      node: nodes.fileAttachment,
+      classname: 'issue-editor__file-attachment--preview'
+    });
+    addClass({
+      node: nodes.fileAttachmentWriteContent,
+      classname: 'issue-editor__file-attachment-write-content--preview'
+    });
+    addClass({
+      node: nodes.previewContent,
+      classname: 'issue-editor__preview-content--preview'
+    });
+    addClass({
+      node: nodes.markdownToolbar,
+      classname: 'issue-editor__markdown-toolbar'
+    });
+    nodes.previewTab.click();
+    appendEntry({
+      text: '[update]',
+      classname: 'issue-editor__update-btn',
+      onclick() {
+        nodes.previewTab.click();
+      }
+    });
+    Object.assign(nodes.markdownToolbar.style, {
+      display: 'block !important'
+    });
+    nodes.markdownToolbar.setAttribute('style', 'display: block !important');
+  }
+
+  function removePreviewMode() {
+    store.previewStatus = emPreviewState.NORMAL;
+    removeClass({
+      node: nodes.fileAttachment,
+      classname: 'issue-editor__file-attachment--preview'
+    });
+    removeClass({
+      node: nodes.fileAttachmentWriteContent,
+      classname: 'issue-editor__file-attachment-write-content--preview'
+    });
+    removeClass({
+      node: nodes.previewContent,
+      classname: 'issue-editor__preview-content--preview'
+    });
+    removeClass({
+      node: nodes.markdownToolbar,
+      classname: 'issue-editor__markdown-toolbar'
+    });
+    removeEntry(nodes.updateEntery);
+    nodes.writeTab.click();
+    nodes.writeTab.focus();
+    clearTimeout(store.previewTimer);
   }
 
   function interceptCommentFormActions() {
@@ -109,27 +216,70 @@
     }
     normalScreen();
   }
-  function appendEntry() {
-    const classname = 'issue-editor__entry-btn';
+  function appendEntry({
+    text,
+    classname,
+    onclick
+  }) {
     const isExist = nodes.markdownToolbar.querySelector('.' + classname);
     if (isExist) {
       return;
     }
 
     const node = document.createElement('div');
-
-    addClass({ node, classname })
-    node.innerHTML = `[zoom]`;
-    node.onclick = function() {
-      console.info('[node.onclick] invoked!');
-      if (store.toggleStatus === emToggleState.FULL_SCREEN) {
-        normalScreen();
-        return;
-      }
-      fullScreen();
+    const classnameSet = new Set(['issue-editor__entry-btn', classname]);
+    addClass({ node, classname: Array.from(classnameSet).join(' ') })
+    node.innerHTML = text;
+    if (onclick) {
+      node.onclick = onclick;
     }
     nodes.markdownToolbar.append(node);
     return node;
+  }
+
+  function appendZoomEntry() {
+    const zoom = appendEntry({
+      text: '[zoom]',
+      classname: 'issue-editor__zoom-btn',
+      onclick() {
+        console.info('[node.onclick] invoked!');
+        if (store.toggleStatus === emToggleState.FULL_SCREEN) {
+          normalScreen();
+          return;
+        }
+        fullScreen();
+      }
+    });
+    return zoom;
+  }
+
+  function appendPreviewEntery() {
+    appendEntry({
+      text: '[preview]',
+      classname: 'issue-editor__preview-btn',
+      onclick() {
+        if (store.previewStatus === emPreviewState.PREVIEW) {
+          removePreviewMode();
+          return;
+        }
+
+        setPreviewMode();
+      }
+    });
+  }
+
+  function removeEntry(node) {
+    if (!node) {
+      return;
+    }
+    node.onclick = null;
+    node.parentElement.removeChild(node);
+  }
+
+  function removePreviewEntry() {
+    removeEntry(nodes.previewEntery)
+    removePreviewMode();
+    clearTimeout(store.previewTimer);
   }
 
   function initHistoryCommentEntries() {
@@ -161,9 +311,8 @@
         it.sub.onclick = null;
         loopFindEditBtn(it.sub, (editBtn) => {
           editBtn.onclick = () => {
-            // editBtn.onclick = null;
             store.sup = it.sup;
-            appendEntry();
+            appendZoomEntry();
             nodes.commentFormActions.onclick = interceptCommentFormActions;
           }
         });
@@ -173,7 +322,7 @@
 
   function initNewCommentEntry() {
     store.sup = nodes.newCommentSup;
-    appendEntry();
+    appendZoomEntry();
     nodes.newCommentFormActions.onclick = interceptCommentFormActions;
   }
 
