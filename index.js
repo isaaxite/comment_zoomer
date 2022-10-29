@@ -42,7 +42,7 @@
         cursor: pointer;
         user-select: none;
         color: rgb(87, 96, 106);
-        margin-left: 2px;
+        margin-left: 8px;
         vertical-align: top;
       }
       .issue-editor__caret {
@@ -179,7 +179,7 @@
     });
     nodes.previewTab.click();
     appendEntry({
-      text: '[update]',
+      text: 'Update',
       classname: 'issue-editor__update-btn',
       onclick() {
         nodes.previewTab.click();
@@ -215,11 +215,24 @@
     clearTimeout(store.previewTimer);
   }
 
-  function interceptCommentFormActions() {
-    if (store.toggleStatus !== emToggleState.FULL_SCREEN) {
-      return;
+  function interceptCommentFormActions(node) {
+    node.onclick = () => {
+      if (store.toggleStatus !== emToggleState.FULL_SCREEN) {
+        return;
+      }
+      normalScreen();
+    };
+    interceptSubmitComment(node);
+  }
+  function interceptSubmitComment(node) {
+    const submit = node.querySelector('[type=submit]');
+    const oldSubmitClick = submit.click;
+    submit.onclick = () => {
+      oldSubmitClick();
+      setTimeout(() => {
+        location.reload();
+      }, 500);
     }
-    normalScreen();
   }
   function appendEntry({
     text,
@@ -242,9 +255,9 @@
     return node;
   }
 
-  function appendZoomEntry() {
+  function appendZoomEntry(sup) {
     const zoom = appendEntry({
-      text: '[zoom]',
+      text: 'Zoom',
       classname: 'issue-editor__zoom-btn',
       onclick() {
         console.info('[node.onclick] invoked!');
@@ -252,6 +265,7 @@
           normalScreen();
           return;
         }
+        store.sup =sup;
         fullScreen();
       }
     });
@@ -260,7 +274,7 @@
 
   function appendPreviewEntery() {
     appendEntry({
-      text: '[preview]',
+      text: 'Preview',
       classname: 'issue-editor__preview-btn',
       onclick() {
         if (store.previewStatus === emPreviewState.PREVIEW) {
@@ -317,8 +331,8 @@
         loopFindEditBtn(it.sub, (editBtn) => {
           editBtn.onclick = () => {
             store.sup = it.sup;
-            appendZoomEntry();
-            nodes.commentFormActions.onclick = interceptCommentFormActions;
+            appendZoomEntry(it.sup);
+            interceptCommentFormActions(nodes.commentFormActions);
           }
         });
       };
@@ -327,8 +341,8 @@
 
   function initNewCommentEntry() {
     store.sup = nodes.newCommentSup;
-    appendZoomEntry();
-    nodes.newCommentFormActions.onclick = interceptCommentFormActions;
+    appendZoomEntry(nodes.newCommentSup);
+    interceptCommentFormActions(nodes.newCommentFormActions);
   }
 
   function ready(cb) {
