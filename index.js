@@ -133,7 +133,7 @@
   }
 
   function initHistoryCommentEntries() {
-    const parent = document.querySelector("#discussion_bucket > div > div.Layout-main > div > div.js-discussion.js-socket-channel.ml-0.pl-0.ml-md-6.pl-md-3");
+    const parent = nodes.discussionBucket.querySelector(".js-discussion.js-socket-channel");
     const findEditBtn = (node) => node.querySelector('.js-comment-edit-button');
     const findAllTimelineItem = (node) => Array.from(node.querySelectorAll('.js-timeline-item'));
     const loopFindEditBtn = (it, cb) => {
